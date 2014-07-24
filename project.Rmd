@@ -1,0 +1,101 @@
+## Analysis the data
+
+```{r}
+library(ggplot2)
+library(AppliedPredictiveModeling)
+library(labdsv)
+library(MASS)
+```
+
+### Load the training and testing Data
+```{r}
+training <- read.csv(file='C:/Users/Young/Downloads/pml-training.csv')
+testing <- read.csv(file='C:/Users/Young/Downloads/pml-testing.csv')
+
+```
+
+### Summary Datasets 
+
+```{r}
+dim(training);dim(testing)
+names(training)
+summary(training$classe)
+
+```
+Unilateral Dumbbell Biceps Curl with 5-levels in  training dataset:
+There is 5580 samples in class A,3797 samples in class B,3422 samples in class c,
+3216 samples in class D,and 3607 samples in last level.
+
+
+
+###   Select Predictors
+```{r}
+
+myvars1 <- c('roll_belt','pitch_belt','yaw_belt',
+            'roll_arm','pitch_arm','yaw_arm',
+            'roll_dumbbell','pitch_dumbbell','yaw_dumbbell',
+            "roll_forearm","pitch_forearm","yaw_forearm","classe")
+train1 <-training[myvars1]
+
+myvars2 <- c('roll_belt','pitch_belt','yaw_belt',
+            'roll_arm','pitch_arm','yaw_arm',
+            'roll_dumbbell','pitch_dumbbell','yaw_dumbbell',
+            "roll_forearm","pitch_forearm","yaw_forearm")
+test1 <- testing[myvars2]
+
+```
+Based on health description in the <a href="http://groupware.les.inf.puc-rio.br/har">reference</a>,arms sensors,belt sensors,forarm sensors,and dumbbell sensors are the main four factors to explore 5 level activity recognition.Instead of using x,y,z axis investigation variables,I select only 12 variables to treat as predictors in the final model,including roll_belt,pitch_belt,yaw_belt,roll_arm,pitch_arm,yaw_arm,roll_dumbbell,pitch_dumbbell,yaw_dumbbell,roll_forearm,pitch_forearm,and yaw_forearm.
+
+### Correlation Matrix with Belt Sensors Orientation
+```{r}
+library(corrplot)
+var_m <- c('roll_belt','pitch_belt','yaw_belt')
+Mat <- train1[var_m]
+M <-cor(Mat)
+corrplot(M,method="number")
+
+```
+According to the result of maxtrix correlation,they have highly statistical correlation
+between yaw_belt and roll_belte,and pitch_belt.Also there is negative statistical
+correlation between pitch_belt and roll_belt observations.
+
+### GGPairs sample 
+
+```{r}
+library(GGally)
+library(memisc)
+
+```
+
+### Picked up 1,000 samples from training data
+
+```{r}
+set.seed(352)
+healthfit_samp <- train1[sample(1:length(train1$classe), 1000), ]
+ggpairs(healthfit_samp, 
+        params = c(shape = I("."), 
+        outlier.shape = I(".")))
+
+```
+
+### Statistical Analysis Using PCA with K-NNs Method
+```{r}
+
+attach(train1)
+library(caret)
+knnFit <- train(classe ~ ., train1, method = "knn", preProcess=c("pca"), 
+    trControl = trainControl(method = "cv"))
+print(knnFit)
+
+```
+
+In the model,classe(categorical variable) treated as an outcome variable.Because each predictors are high correlated,so I use Principle Factor Analysis with <a href="http://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm">K-Nearest Neighbors(K-NN) Algorithm</a> to reduce dimensions.In here,neither logistic regression model nor Linear Discriminant Analysis(LDA) model works well in this model because of predictors' high correlation.So I didn't use Logistic Model/LDA method in the final.In order to save more information which comes from predictors,PCA is the one of best method to explore the data.
+
+I use 10-fold Cross Validation to prevent the model overfitting.When k equals to 5,the model gets the highest accuracy,which is 92.60%.
+
+### Predict 20 Cases with each Problem_ID in Test Data
+```{r}
+pred <- predict(knnFit,test1)
+print(pred)
+
+```
