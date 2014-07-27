@@ -13,8 +13,8 @@ library(AppliedPredictiveModeling)
 ### Load the training and testing Data
 ```{r}
 # switch all blank values in each column to NAs
-training <- read.csv(file='/Users/gaoyang/desktop/pml-training.csv',na.string=c("","NA"))
-testing <- read.csv(file='/Users/gaoyang/desktop/pml-testing.csv',na.string=c("","NA"))
+training <- read.csv(file='/Users/yang/desktop/pml-training.csv',na.string=c("","NA"))
+testing <- read.csv(file='/Users/yang/desktop/pml-testing.csv',na.string=c("","NA"))
 ```
 
 ### Summary Datasets 
