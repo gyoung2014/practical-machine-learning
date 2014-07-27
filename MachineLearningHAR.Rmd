@@ -1,6 +1,6 @@
 # Practical Machine Learning Project 
 #### Predict Qualitative Activity Recognition of Weight Lifting Exercises
-Created July-26-2014
+Created July-26-2014,Save the code in <a href="https://github.com/ryanyoung2014/practical-machine-learning/blob/master/MachineLearningHAR.Rmd">Github Repo - Practical Machine Learning</a> .
 
 ### Analysis the data
 
@@ -13,16 +13,14 @@ library(AppliedPredictiveModeling)
 ### Load the training and testing Data
 ```{r}
 # switch all blank values in each column to NAs
-training <- read.csv(file='C:/Users/Young/Downloads/pml-training.csv',na.string=c("","NA"))
-testing <- read.csv(file='C:/Users/Young/Downloads/pml-testing.csv',na.string=c("","NA"))
-
+training <- read.csv(file='/Users/gaoyang/desktop/pml-training.csv',na.string=c("","NA"))
+testing <- read.csv(file='/Users/gaoyang/desktop/pml-testing.csv',na.string=c("","NA"))
 ```
 
 ### Summary Datasets 
 
 ```{r}
 dim(training);dim(testing)
-names(training)
 summary(training$classe)
 
 ```
@@ -49,7 +47,7 @@ which(columnNAs(training)!=19216)
 
 # Remove allNAs and blank values from training dataset
 train1 <- training[,which(columnNAs(training)!=19216)]
-
+names(train1)
 dim(train1)
 
 ```
@@ -60,12 +58,11 @@ dim(train1)
 trainHAR<- train1[c(8:60)]
 
 ```
-Based on health description in the <a href="http://groupware.les.inf.puc-rio.br/har">
-reference</a>,arms sensors,belt sensors,forarm sensors,and dumbbell sensors are the main 
-four factors to explore 5 level activity recognition.After removing missing values,I select 
-only 52 variables to treat as predictors in the final model,including roll_belt,pitch_belt,
-yaw_belt,roll_arm,pitch_arm,yaw_arm,roll_dumbbell,pitch_dumbbell,yaw_dumbbell,roll_forearm,
-pitch_forearm,and yaw_forearm.
+Based on health description in the <a href="http://groupware.les.inf.puc-rio.br/har">reference</a>,
+arms sensors,belt sensors,forarm sensors,and dumbbell sensors are the main four factors to explore 5 
+level activity recognition.After removing missing values,I select only 52 variables to treat as predictors 
+in the final model,including roll_belt,pitch_belt,yaw_belt,roll_arm,pitch_arm,yaw_arm,roll_dumbbell,
+pitch_dumbbell,yaw_dumbbell,roll_forearm,pitch_forearm,and yaw_forearm.
 
 ### Correlation Matrix with Belt Sensors Orientation
 ```{r}
@@ -80,11 +77,10 @@ According to the result of maxtrix correlation,they have highly statistical corr
 between yaw_belt and roll_belte,and pitch_belt.Also there is negative statistical
 correlation between pitch_belt and roll_belt observations.
 
-### Statistical Analysis Using PCA
+### Statistical Analysis
 
-In the model,classe(categorical variable) treated as an outcome variable.Because each 
-predictors are high correlated,neither logistic regression model nor Linear Discriminant 
-Analysis(LDA) model works well.
+In the model,classe(categorical variable) treated as an outcome variable.Because each predictors are 
+high correlated,neither logistic regression model nor Linear Discriminant Analysis(LDA) model works well.
 
 #### Option 1:K-Nearest Neighbor
 ```{r}
@@ -97,26 +93,45 @@ Fit1 <- train(classe ~ ., trainHAR, method = "knn", preProcess=c("pca"),
 print(Fit1)
 ```
 
-I use Principle Factor Analysis with <a href="http://en.wikipedia.org/wiki
-/K-nearest_neighbors_algorithm">K-Nearest Neighbors(K-NN) Algorithm</a> to
-reduce dimensions.In order to save more information which comes from predictors,
-PCA is the one of best method to explore the data.The accuracy in the model with 
-KNN method is 97.00%(when k equals to 5).
+I use 10-fold Cross Validation to prevent the model overfitting,and use Principle Factor Analysis 
+with <a href="http://en.wikipedia.org/wiki/K-nearest_neighbors_algorithm">K-Nearest Neighbors(K-NN) Algorithm</a> 
+to reduce dimensions.In order to save more information which comes from predictors,PCA is the one of best method 
+to explore the data.The accuracy in the model with KNN method is 97.00%(when k equals to 5).
 
 #### Option 2: Random Forest
+
+Partition dataset into training and validation(test set)
+```{r}
+set.seed(1234)
+intrain <- createDataPartition(trainHAR$classe,p=0.75,list=F)
+tr <- trainHAR[intrain,]
+validation <- trainHAR[-intrain,]
+dim(tr);dim(validation)
+
+```
+
+Because random forest does not overfit,so there is no need to use cross validation.
 ```{r}
 library(randomForest)
-Fit2 <- train(classe ~ ., trainHAR, method = "rf", preProcess=c("pca"), 
-    trControl = trainControl(method = "cv"))
+
+Fit2 <- train(classe ~ ., tr, method = "rf", prox=T,importance=T, 
+    trControl = trainControl(method = "oob"))
 print(Fit2)
 print(Fit2$finalModel)
 
 ```
 
-I use 10-fold Cross Validation to prevent the model overfitting.Also,I try to 
-use <a href="http://en.wikipedia.org/wiki/Random_forest">Random Forest</a> algorithm 
-in PCA model.The accuracy in the model with random forest method is 98.20%.The accuracy 
-is a little bit higher than that in model with K-Nearest Neighbors.
+Also,I try to use <a href="http://en.wikipedia.org/wiki/Random_forest">Random Forest</a> 
+algorithm in analysis.The accuracy in the model with random forest method is 99.30%.The 
+accuracy is a little bit higher than that in model with K-Nearest Neighbors.
+
+#### Out of Sample Error Rate
+```{r}
+p <- predict(Fit2,newdata=validation)
+error_rate <-confusionMatrix(p,validation$classe)
+print(error_rate)
+
+```
 
 To predict 20 cases with each problem id further,I use PCA model with random forest.
 
@@ -146,8 +161,8 @@ print(pred)
 
 ```
 ### Summary
-The error rate of cross validation in random forest is 1.80% based on training dataset(whole data) 
-in validation part.The out of bag estimate error rate is 1.59%.
+Because the confusion matrix accuracy is 0.978,so the out of sample error rate in random forest 
+is 2.20% based on training dataset(whole data) in validation part.The out of bag estimate error rate is 0.60%.
 
 ### References
 
