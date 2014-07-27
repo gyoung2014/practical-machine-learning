@@ -1,0 +1,156 @@
+# Practical Machine Learning Project 
+#### Predict Qualitative Activity Recognition of Weight Lifting Exercises
+Created July-26-2014
+
+### Analysis the data
+
+```{r}
+library(ggplot2)
+library(AppliedPredictiveModeling)
+
+```
+
+### Load the training and testing Data
+```{r}
+# switch all blank values in each column to NAs
+training <- read.csv(file='C:/Users/Young/Downloads/pml-training.csv',na.string=c("","NA"))
+testing <- read.csv(file='C:/Users/Young/Downloads/pml-testing.csv',na.string=c("","NA"))
+
+```
+
+### Summary Datasets 
+
+```{r}
+dim(training);dim(testing)
+names(training)
+summary(training$classe)
+
+```
+Unilateral Dumbbell Biceps Curl with 5-levels in  training dataset:
+There is 5580 samples in class A,3797 samples in class B,3422 samples in class c,
+3216 samples in class D,and 3607 samples in last level.
+
+```{r}
+qplot(classe,data=training,geom='histogram',binwidth=0.1)
+
+```
+
+### Clean Data 
+```{r}
+# find how many observations are left in each variable
+
+columnNAs <- function(x) {
+    as.vector(apply(x, 2, function(x) length(which(is.na(x)))))
+    }
+columnNAs(training)
+
+# find columns are not all NAs
+which(columnNAs(training)!=19216)
+
+# Remove allNAs and blank values from training dataset
+train1 <- training[,which(columnNAs(training)!=19216)]
+
+dim(train1)
+
+```
+
+###   Select Predictors in Training dataset
+```{r}
+
+trainHAR<- train1[c(8:60)]
+
+```
+Based on health description in the <a href="http://groupware.les.inf.puc-rio.br/har">
+reference</a>,arms sensors,belt sensors,forarm sensors,and dumbbell sensors are the main 
+four factors to explore 5 level activity recognition.After removing missing values,I select 
+only 52 variables to treat as predictors in the final model,including roll_belt,pitch_belt,
+yaw_belt,roll_arm,pitch_arm,yaw_arm,roll_dumbbell,pitch_dumbbell,yaw_dumbbell,roll_forearm,
+pitch_forearm,and yaw_forearm.
+
+### Correlation Matrix with Belt Sensors Orientation
+```{r}
+library(corrplot)
+var_m <- c('roll_belt','pitch_belt','yaw_belt')
+Mat <- trainHAR[var_m]
+M <-cor(Mat)
+corrplot(M,method="number")
+
+```
+According to the result of maxtrix correlation,they have highly statistical correlation
+between yaw_belt and roll_belte,and pitch_belt.Also there is negative statistical
+correlation between pitch_belt and roll_belt observations.
+
+### Statistical Analysis Using PCA
+
+In the model,classe(categorical variable) treated as an outcome variable.Because each 
+predictors are high correlated,neither logistic regression model nor Linear Discriminant 
+Analysis(LDA) model works well.
+
+#### Option 1:K-Nearest Neighbor
+```{r}
+
+attach(trainHAR)
+library(caret)
+
+Fit1 <- train(classe ~ ., trainHAR, method = "knn", preProcess=c("pca"), 
+    trControl = trainControl(method = "cv"))
+print(Fit1)
+```
+
+I use Principle Factor Analysis with <a href="http://en.wikipedia.org/wiki
+/K-nearest_neighbors_algorithm">K-Nearest Neighbors(K-NN) Algorithm</a> to
+reduce dimensions.In order to save more information which comes from predictors,
+PCA is the one of best method to explore the data.The accuracy in the model with 
+KNN method is 97.00%(when k equals to 5).
+
+#### Option 2: Random Forest
+```{r}
+library(randomForest)
+Fit2 <- train(classe ~ ., trainHAR, method = "rf", preProcess=c("pca"), 
+    trControl = trainControl(method = "cv"))
+print(Fit2)
+print(Fit2$finalModel)
+
+```
+
+I use 10-fold Cross Validation to prevent the model overfitting.Also,I try to 
+use <a href="http://en.wikipedia.org/wiki/Random_forest">Random Forest</a> algorithm 
+in PCA model.The accuracy in the model with random forest method is 98.20%.The accuracy 
+is a little bit higher than that in model with K-Nearest Neighbors.
+
+To predict 20 cases with each problem id further,I use PCA model with random forest.
+
+
+### Prepare for Test data
+```{r}
+columnNAs <- function(x) {
+    as.vector(apply(x, 2, function(x) length(which(is.na(x)))))
+    }
+columnNAs(testing)
+
+# find columns are not all NAs
+which(columnNAs(testing)!=20)
+
+# Remove allNAs and blank values from testing dataset
+test1 <- testing[,which(columnNAs(testing)!=20)]
+names(test1)
+
+```
+The 20 test cases includes problem_id variable.
+
+### Predict 20 Cases with each Problem_ID in Test Data
+```{r}
+test2 <-test1[c(8:59)]
+pred <- predict(Fit2,test2)
+print(pred)
+
+```
+### Summary
+The error rate of cross validation in random forest is 1.80% based on training dataset(whole data) 
+in validation part.The out of bag estimate error rate is 1.59%.
+
+### References
+
+[1]Human Activity Recognition Description:http://groupware.les.inf.puc-rio.br/har
+
+[2]Practical Machine Learning Project Description:https://class.coursera.org/predmachlearn-003/human_grading/view/courses/972148/assessments/4/submissions
