@@ -1,4 +1,6 @@
-practical-machine-learning
+Practical-Machine-Learning
 ==========================
 
-coursera practical machine learning project
+The project for coursera practical machine learning course.
+
+
